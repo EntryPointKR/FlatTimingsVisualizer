@@ -15,41 +15,47 @@ import java.nio.file.Files;
 public class FlatTimingsVisualizer {
     public static void main(String[] args) throws IOException {
         JFileChooser chooser = new JFileChooser();
+        chooser.setMultiSelectionEnabled(true);
         JFrame frame = new JFrame();
         chooser.setFileFilter(new FileNameExtensionFilter("Text file", "txt"));
         if (chooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            byte[] readed = Files.readAllBytes(file.toPath());
-            HttpURLConnection ex = (HttpURLConnection) (new URL("https://timings.spigotmc.org/paste")).openConnection();
-            ex.setDoOutput(true);
-            ex.setRequestMethod("POST");
-            ex.setInstanceFollowRedirects(false);
-            OutputStream out = ex.getOutputStream();
-            out.write(readed);
-            out.close();
-
-            StringBuilder builder = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(ex.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (builder.length() > 0) {
-                        builder.append('\n');
-                    }
-                    builder.append(line);
-                }
-            }
-            String json = builder.toString();
-            String target = "key\"";
-            int position = json.indexOf(target) + target.length();
-            int valuePos = json.indexOf('\"', position) + 1;
-            String value = json.substring(valuePos, json.indexOf('\"', valuePos));
-            String address = "https://timings.spigotmc.org/?url=" + value;
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().browse(URI.create(address));
-            } else {
-                System.out.println("Address: " + address);
+            for (File file : chooser.getSelectedFiles()) {
+                upload(file);
             }
         }
         System.exit(0);
+    }
+
+    public static void upload(File file) throws IOException {
+        byte[] readed = Files.readAllBytes(file.toPath());
+        HttpURLConnection ex = (HttpURLConnection) (new URL("https://timings.spigotmc.org/paste")).openConnection();
+        ex.setDoOutput(true);
+        ex.setRequestMethod("POST");
+        ex.setInstanceFollowRedirects(false);
+        try (OutputStream out = ex.getOutputStream()) {
+            out.write(readed);
+        }
+
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(ex.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (builder.length() > 0) {
+                    builder.append('\n');
+                }
+                builder.append(line);
+            }
+        }
+        String json = builder.toString();
+        String target = "key\"";
+        int position = json.indexOf(target) + target.length();
+        int valuePos = json.indexOf('\"', position) + 1;
+        String value = json.substring(valuePos, json.indexOf('\"', valuePos));
+        String address = "https://timings.spigotmc.org/?url=" + value;
+        if (Desktop.isDesktopSupported()) {
+            Desktop.getDesktop().browse(URI.create(address));
+        } else {
+            System.out.println("Address: " + address);
+        }
     }
 }
